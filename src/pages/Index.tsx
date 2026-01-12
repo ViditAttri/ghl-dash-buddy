@@ -1,4 +1,5 @@
-import { Users, DollarSign, Target, TrendingUp } from "lucide-react";
+import { useEffect } from "react";
+import { Users, DollarSign, Target, TrendingUp, Loader2 } from "lucide-react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -7,15 +8,57 @@ import { RecentLeads } from "@/components/dashboard/RecentLeads";
 import { ActivityChart } from "@/components/dashboard/ActivityChart";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { GHLConnectionStatus } from "@/components/dashboard/GHLConnectionStatus";
+import { useGHLData } from "@/hooks/useGHLData";
 
-const stats = [
-  { title: "Total Leads", value: "2,847", change: 12.5, icon: Users },
-  { title: "Revenue", value: "$128.4K", change: 8.2, icon: DollarSign },
-  { title: "Conversion Rate", value: "15.5%", change: -2.4, icon: Target },
-  { title: "Active Campaigns", value: "24", change: 18.7, icon: TrendingUp },
-];
+const formatCurrency = (value: number) => {
+  if (value >= 1000000) {
+    return `$${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(1)}K`;
+  }
+  return `$${value.toFixed(0)}`;
+};
+
+const formatNumber = (value: number) => {
+  return value.toLocaleString();
+};
 
 const Index = () => {
+  const { stats, connected, loading, fetchStats } = useGHLData();
+
+  useEffect(() => {
+    // Auto-fetch stats on mount
+    fetchStats();
+  }, [fetchStats]);
+
+  const liveStats = [
+    { 
+      title: "Total Leads", 
+      value: stats ? formatNumber(stats.totalContacts) : "—", 
+      change: 12.5, 
+      icon: Users 
+    },
+    { 
+      title: "Revenue", 
+      value: stats ? formatCurrency(stats.totalValue) : "—", 
+      change: 8.2, 
+      icon: DollarSign 
+    },
+    { 
+      title: "Conversion Rate", 
+      value: stats ? stats.conversionRate : "—", 
+      change: -2.4, 
+      icon: Target 
+    },
+    { 
+      title: "Opportunities", 
+      value: stats ? formatNumber(stats.totalOpportunities) : "—", 
+      change: 18.7, 
+      icon: TrendingUp 
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -29,13 +72,20 @@ const Index = () => {
           
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat, index) => (
-              <StatCard 
-                key={stat.title} 
-                {...stat} 
-                delay={index * 100}
-              />
-            ))}
+            {loading && !stats ? (
+              <div className="col-span-4 flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-muted-foreground">Loading GHL data...</span>
+              </div>
+            ) : (
+              liveStats.map((stat, index) => (
+                <StatCard 
+                  key={stat.title} 
+                  {...stat} 
+                  delay={index * 100}
+                />
+              ))
+            )}
           </div>
 
           {/* Main Content Grid */}
