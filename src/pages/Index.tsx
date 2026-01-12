@@ -6,6 +6,7 @@ import { PipelineChart } from "@/components/dashboard/PipelineChart";
 import { RecentLeads } from "@/components/dashboard/RecentLeads";
 import { ActivityChart } from "@/components/dashboard/ActivityChart";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { GHLConnectionStatus } from "@/components/dashboard/GHLConnectionStatus";
 
 const stats = [
   { title: "Total Leads", value: "2,847", change: 12.5, icon: Users },
@@ -23,6 +24,9 @@ const Index = () => {
         <Header />
         
         <div className="p-6 space-y-6">
+          {/* GHL Connection Status */}
+          <GHLConnectionStatus />
+          
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat, index) => (
