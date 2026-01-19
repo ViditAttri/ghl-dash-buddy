@@ -10,21 +10,24 @@ import {
   Mail,
   Phone
 } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
-  { icon: Users, label: "Contacts" },
-  { icon: Target, label: "Pipelines" },
-  { icon: MessageSquare, label: "Conversations" },
-  { icon: Calendar, label: "Calendar" },
-  { icon: Mail, label: "Email Marketing" },
-  { icon: Phone, label: "Phone System" },
-  { icon: Zap, label: "Automations" },
-  { icon: BarChart3, label: "Reports" },
-  { icon: Settings, label: "Settings" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: Users, label: "Contacts", path: "/contacts" },
+  { icon: Target, label: "Pipelines", path: "#" },
+  { icon: MessageSquare, label: "Conversations", path: "#" },
+  { icon: Calendar, label: "Calendar", path: "#" },
+  { icon: Mail, label: "Email Marketing", path: "#" },
+  { icon: Phone, label: "Phone System", path: "#" },
+  { icon: Zap, label: "Automations", path: "#" },
+  { icon: BarChart3, label: "Reports", path: "#" },
+  { icon: Settings, label: "Settings", path: "#" },
 ];
 
 export const Sidebar = () => {
+  const location = useLocation();
+
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo */}
@@ -42,16 +45,19 @@ export const Sidebar = () => {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <a
-            key={item.label}
-            href="#"
-            className={`nav-item ${item.active ? 'active' : ''}`}
-          >
-            <item.icon className="w-5 h-5" />
-            <span className="font-medium">{item.label}</span>
-          </a>
-        ))}
+        {navItems.map((item) => {
+          const isActive = item.path !== "#" && location.pathname === item.path;
+          return (
+            <Link
+              key={item.label}
+              to={item.path}
+              className={`nav-item ${isActive ? 'active' : ''}`}
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="font-medium">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
       {/* User section */}
