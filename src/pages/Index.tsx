@@ -102,7 +102,7 @@ const Index = () => {
           {/* Activity and Leads */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ActivityChart />
-            <RecentLeads />
+            <RecentLeads contacts={stats?.recentContacts} loading={loading && !stats} />
           </div>
         </div>
       </main>
