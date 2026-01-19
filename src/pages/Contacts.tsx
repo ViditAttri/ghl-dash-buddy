@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Loader2, Mail, Phone, Calendar, FileText, ExternalLink, RefreshCw } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Loader2, Mail, Phone, Calendar, FileText, ExternalLink, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,7 +85,44 @@ const getAppointmentSource = (contact: GHLContact) => {
 const Contacts = () => {
   const [contacts, setContacts] = useState<GHLContact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const checkScrollability = () => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      setCanScrollLeft(container.scrollLeft > 0);
+      setCanScrollRight(
+        container.scrollLeft < container.scrollWidth - container.clientWidth - 1
+      );
+    }
+  };
+
+  const scrollTable = (direction: 'left' | 'right') => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      const scrollAmount = 300;
+      container.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container) {
+      checkScrollability();
+      container.addEventListener('scroll', checkScrollability);
+      window.addEventListener('resize', checkScrollability);
+      return () => {
+        container.removeEventListener('scroll', checkScrollability);
+        window.removeEventListener('resize', checkScrollability);
+      };
+    }
+  }, [contacts]);
 
   const fetchAllContacts = async () => {
     setLoading(true);
@@ -132,7 +169,7 @@ const Contacts = () => {
             </Button>
           </div>
 
-          <div className="stat-card overflow-hidden">
+          <div className="stat-card overflow-hidden relative">
             {loading ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -143,24 +180,48 @@ const Contacts = () => {
                 No contacts found
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="sticky left-0 bg-card z-10">Contact</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Source</TableHead>
-                      <TableHead>Appointment</TableHead>
-                      <TableHead>Resume</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Tags</TableHead>
-                      <TableHead>Added</TableHead>
-                      <TableHead>Updated</TableHead>
-                      <TableHead>DND</TableHead>
-                    </TableRow>
-                  </TableHeader>
+              <>
+                {/* Scroll indicators */}
+                {canScrollLeft && (
+                  <button
+                    onClick={() => scrollTable('left')}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gradient-to-r from-card via-card to-transparent pl-2 pr-6 py-8 hover:opacity-80 transition-opacity"
+                    aria-label="Scroll left"
+                  >
+                    <ChevronLeft className="w-6 h-6 text-foreground" />
+                  </button>
+                )}
+                {canScrollRight && (
+                  <button
+                    onClick={() => scrollTable('right')}
+                    className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-gradient-to-l from-card via-card to-transparent pr-2 pl-6 py-8 hover:opacity-80 transition-opacity"
+                    aria-label="Scroll right"
+                  >
+                    <ChevronRight className="w-6 h-6 text-foreground" />
+                  </button>
+                )}
+
+                <div 
+                  ref={scrollContainerRef}
+                  className="overflow-x-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                >
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="sticky left-0 bg-card z-10 min-w-[220px] after:absolute after:right-0 after:top-0 after:bottom-0 after:w-4 after:bg-gradient-to-r after:from-transparent after:to-card after:pointer-events-none">Contact</TableHead>
+                        <TableHead className="min-w-[140px]">Phone</TableHead>
+                        <TableHead className="min-w-[80px]">Type</TableHead>
+                        <TableHead className="min-w-[150px]">Source</TableHead>
+                        <TableHead className="min-w-[130px]">Appointment</TableHead>
+                        <TableHead className="min-w-[80px]">Resume</TableHead>
+                        <TableHead className="min-w-[150px]">Location</TableHead>
+                        <TableHead className="min-w-[120px]">Company</TableHead>
+                        <TableHead className="min-w-[150px]">Tags</TableHead>
+                        <TableHead className="min-w-[160px]">Added</TableHead>
+                        <TableHead className="min-w-[160px]">Updated</TableHead>
+                        <TableHead className="min-w-[60px]">DND</TableHead>
+                      </TableRow>
+                    </TableHeader>
                   <TableBody>
                     {contacts.map((contact) => {
                       const appointment = getAppointmentSource(contact);
@@ -168,7 +229,7 @@ const Contacts = () => {
                       
                       return (
                         <TableRow key={contact.id}>
-                          <TableCell className="sticky left-0 bg-card z-10">
+                          <TableCell className="sticky left-0 bg-card z-10 after:absolute after:right-0 after:top-0 after:bottom-0 after:w-4 after:bg-gradient-to-r after:from-transparent after:to-card/50 after:pointer-events-none">
                             <div className="flex items-center gap-3 min-w-[200px]">
                               <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
                                 <span className="text-sm font-semibold text-foreground">
@@ -312,6 +373,7 @@ const Contacts = () => {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
           </div>
         </div>
