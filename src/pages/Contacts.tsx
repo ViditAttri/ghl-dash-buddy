@@ -118,7 +118,7 @@ const Contacts = () => {
       <main className="ml-64">
         <Header />
         
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 max-w-[calc(100vw-16rem)]">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-foreground">All Contacts</h1>
