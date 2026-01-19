@@ -1,27 +1,56 @@
-import { MoreHorizontal, Mail, Phone } from "lucide-react";
+import { MoreHorizontal, Mail, Phone, Loader2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
-const leads = [
-  { name: "Sarah Johnson", email: "sarah@techcorp.com", source: "Facebook Ads", status: "New", value: "$12,500", time: "2 min ago" },
-  { name: "Mike Chen", email: "mike@startupxyz.io", source: "Google Ads", status: "Contacted", value: "$8,900", time: "15 min ago" },
-  { name: "Emily Davis", email: "emily@agency.co", source: "Referral", status: "Qualified", value: "$24,000", time: "1 hour ago" },
-  { name: "James Wilson", email: "james@enterprise.com", source: "Website", status: "Proposal", value: "$45,000", time: "2 hours ago" },
-  { name: "Lisa Thompson", email: "lisa@retail.com", source: "LinkedIn", status: "New", value: "$6,200", time: "3 hours ago" },
-];
+interface GHLContact {
+  id: string;
+  contactName?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  source?: string;
+  type?: string;
+  dateAdded?: string;
+}
+
+interface RecentLeadsProps {
+  contacts?: GHLContact[];
+  loading?: boolean;
+}
 
 const statusColors: Record<string, string> = {
-  "New": "bg-primary/20 text-primary",
-  "Contacted": "bg-warning/20 text-warning",
-  "Qualified": "bg-success/20 text-success",
-  "Proposal": "bg-accent/20 text-accent",
+  "lead": "bg-primary/20 text-primary",
+  "customer": "bg-success/20 text-success",
+  "prospect": "bg-warning/20 text-warning",
+  "new": "bg-accent/20 text-accent",
 };
 
-export const RecentLeads = () => {
+const getInitials = (contact: GHLContact) => {
+  const name = contact.contactName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+};
+
+const getFullName = (contact: GHLContact) => {
+  return contact.contactName || `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Unknown';
+};
+
+const getTimeAgo = (dateString?: string) => {
+  if (!dateString) return '—';
+  try {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+  } catch {
+    return '—';
+  }
+};
+
+export const RecentLeads = ({ contacts = [], loading = false }: RecentLeadsProps) => {
   return (
     <div className="stat-card animate-slide-up" style={{ animationDelay: "300ms" }}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold text-foreground">Recent Leads</h3>
-          <p className="text-sm text-muted-foreground">Latest opportunities</p>
+          <p className="text-sm text-muted-foreground">Latest contacts from GHL</p>
         </div>
         <button className="text-primary text-sm font-medium hover:underline">
           View All
@@ -29,58 +58,81 @@ export const RecentLeads = () => {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="text-left text-sm text-muted-foreground border-b border-border/50">
-              <th className="pb-4 font-medium">Contact</th>
-              <th className="pb-4 font-medium">Source</th>
-              <th className="pb-4 font-medium">Status</th>
-              <th className="pb-4 font-medium">Value</th>
-              <th className="pb-4 font-medium">Time</th>
-              <th className="pb-4 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {leads.map((lead, index) => (
-              <tr key={index} className="table-row">
-                <td className="py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                      <span className="text-sm font-semibold text-foreground">
-                        {lead.name.split(' ').map(n => n[0]).join('')}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{lead.name}</p>
-                      <p className="text-sm text-muted-foreground">{lead.email}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="py-4 text-sm text-muted-foreground">{lead.source}</td>
-                <td className="py-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[lead.status]}`}>
-                    {lead.status}
-                  </span>
-                </td>
-                <td className="py-4 font-semibold text-foreground">{lead.value}</td>
-                <td className="py-4 text-sm text-muted-foreground">{lead.time}</td>
-                <td className="py-4">
-                  <div className="flex items-center gap-2">
-                    <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
-                      <Mail className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
-                      <Phone className="w-4 h-4" />
-                    </button>
-                    <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading contacts...</span>
+          </div>
+        ) : contacts.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            No recent contacts found
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-sm text-muted-foreground border-b border-border/50">
+                <th className="pb-4 font-medium">Contact</th>
+                <th className="pb-4 font-medium">Source</th>
+                <th className="pb-4 font-medium">Type</th>
+                <th className="pb-4 font-medium">Added</th>
+                <th className="pb-4 font-medium"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {contacts.slice(0, 5).map((contact) => (
+                <tr key={contact.id} className="table-row">
+                  <td className="py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                        <span className="text-sm font-semibold text-foreground">
+                          {getInitials(contact)}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{getFullName(contact)}</p>
+                        <p className="text-sm text-muted-foreground">{contact.email || contact.phone || '—'}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 text-sm text-muted-foreground">
+                    {contact.source || 'Direct'}
+                  </td>
+                  <td className="py-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${statusColors[contact.type?.toLowerCase() || 'lead'] || statusColors.lead}`}>
+                      {contact.type || 'Lead'}
+                    </span>
+                  </td>
+                  <td className="py-4 text-sm text-muted-foreground">
+                    {getTimeAgo(contact.dateAdded)}
+                  </td>
+                  <td className="py-4">
+                    <div className="flex items-center gap-2">
+                      {contact.email && (
+                        <a 
+                          href={`mailto:${contact.email}`}
+                          className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                        >
+                          <Mail className="w-4 h-4" />
+                        </a>
+                      )}
+                      {contact.phone && (
+                        <a 
+                          href={`tel:${contact.phone}`}
+                          className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                        >
+                          <Phone className="w-4 h-4" />
+                        </a>
+                      )}
+                      <button className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
