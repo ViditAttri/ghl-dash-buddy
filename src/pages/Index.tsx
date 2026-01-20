@@ -1,61 +1,126 @@
-import { useEffect } from "react";
-import { Users, DollarSign, Target, TrendingUp, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Users, Calendar, Loader2, RefreshCw } from "lucide-react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { PipelineChart } from "@/components/dashboard/PipelineChart";
-import { RecentLeads } from "@/components/dashboard/RecentLeads";
-import { ActivityChart } from "@/components/dashboard/ActivityChart";
-import { QuickActions } from "@/components/dashboard/QuickActions";
 import { GHLConnectionStatus } from "@/components/dashboard/GHLConnectionStatus";
-import { useGHLData } from "@/hooks/useGHLData";
+import { ContactsAppointmentsTable } from "@/components/dashboard/ContactsAppointmentsTable";
+import { AppointmentsTable } from "@/components/dashboard/AppointmentsTable";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-const formatCurrency = (value: number) => {
-  if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
-  }
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(1)}K`;
-  }
-  return `$${value.toFixed(0)}`;
-};
+interface GHLContact {
+  id: string;
+  contactName?: string;
+  firstName?: string;
+  lastName?: string;
+  firstNameRaw?: string;
+  lastNameRaw?: string;
+  email?: string;
+  phone?: string;
+  source?: string;
+  type?: string;
+  dateAdded?: string;
+  dateUpdated?: string;
+  tags?: string[];
+  customFields?: Array<{ id: string; value: string }>;
+  attributions?: Array<{ medium?: string; pageUrl?: string }>;
+}
 
-const formatNumber = (value: number) => {
-  return value.toLocaleString();
-};
+interface GHLAppointment {
+  id: string;
+  title?: string;
+  calendarId?: string;
+  contactId?: string;
+  status?: string;
+  appoinmentStatus?: string;
+  appointmentStatus?: string;
+  startTime?: string;
+  endTime?: string;
+  contact?: {
+    id?: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+  };
+}
 
 const Index = () => {
-  const { stats, connected, loading, fetchStats } = useGHLData();
+  const [contacts, setContacts] = useState<GHLContact[]>([]);
+  const [appointments, setAppointments] = useState<GHLAppointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch contacts and appointments in parallel
+      const [contactsResult, appointmentsResult] = await Promise.all([
+        supabase.functions.invoke('ghl-sync', {
+          body: { action: 'get_contacts', data: { limit: 100 } },
+        }),
+        supabase.functions.invoke('ghl-sync', {
+          body: { action: 'get_appointments', data: {} },
+        }),
+      ]);
+
+      if (contactsResult.error) throw contactsResult.error;
+      if (appointmentsResult.error) throw appointmentsResult.error;
+
+      setContacts(contactsResult.data.contacts || []);
+      setAppointments(appointmentsResult.data.events || []);
+    } catch (error: any) {
+      toast({
+        title: 'Failed to fetch data',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Auto-fetch stats on mount
-    fetchStats();
-  }, [fetchStats]);
+    fetchData();
+  }, []);
 
-  const liveStats = [
+  // Calculate stats
+  const contactsWithAppointments = contacts.filter(c => 
+    c.attributions?.some(a => a.medium === 'calendar')
+  ).length;
+
+  const upcomingAppointments = appointments.filter(a => {
+    if (!a.startTime) return false;
+    return new Date(a.startTime) >= new Date();
+  }).length;
+
+  const stats = [
     { 
-      title: "Total Leads", 
-      value: stats ? formatNumber(stats.totalContacts) : "—", 
-      change: 12.5, 
+      title: "Total Contacts", 
+      value: contacts.length.toString(), 
+      change: 0, 
       icon: Users 
     },
     { 
-      title: "Revenue", 
-      value: stats ? formatCurrency(stats.totalValue) : "—", 
-      change: 8.2, 
-      icon: DollarSign 
+      title: "With Appointments", 
+      value: contactsWithAppointments.toString(), 
+      change: 0, 
+      icon: Calendar 
     },
     { 
-      title: "Conversion Rate", 
-      value: stats ? stats.conversionRate : "—", 
-      change: -2.4, 
-      icon: Target 
+      title: "Total Appointments", 
+      value: appointments.length.toString(), 
+      change: 0, 
+      icon: Calendar 
     },
     { 
-      title: "Opportunities", 
-      value: stats ? formatNumber(stats.totalOpportunities) : "—", 
-      change: 18.7, 
-      icon: TrendingUp 
+      title: "Upcoming", 
+      value: upcomingAppointments.toString(), 
+      change: 0, 
+      icon: Calendar 
     },
   ];
 
@@ -70,15 +135,29 @@ const Index = () => {
           {/* GHL Connection Status */}
           <GHLConnectionStatus />
           
+          {/* Header with Refresh */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+              <p className="text-muted-foreground">
+                Overview of contacts and appointments
+              </p>
+            </div>
+            <Button onClick={fetchData} disabled={loading} variant="outline">
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+          
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {loading && !stats ? (
+            {loading ? (
               <div className="col-span-4 flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-muted-foreground">Loading GHL data...</span>
+                <span className="ml-2 text-muted-foreground">Loading data...</span>
               </div>
             ) : (
-              liveStats.map((stat, index) => (
+              stats.map((stat, index) => (
                 <StatCard 
                   key={stat.title} 
                   {...stat} 
@@ -88,21 +167,16 @@ const Index = () => {
             )}
           </div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Pipeline Chart */}
-            <div className="lg:col-span-2">
-              <PipelineChart />
-            </div>
-            
-            {/* Quick Actions */}
-            <QuickActions />
-          </div>
-
-          {/* Activity and Leads */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ActivityChart />
-            <RecentLeads contacts={stats?.recentContacts} loading={loading && !stats} />
+          {/* Two Tables Grid */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <ContactsAppointmentsTable 
+              contacts={contacts} 
+              loading={loading} 
+            />
+            <AppointmentsTable 
+              appointments={appointments} 
+              loading={loading} 
+            />
           </div>
         </div>
       </main>

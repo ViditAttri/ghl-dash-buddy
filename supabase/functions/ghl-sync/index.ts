@@ -40,6 +40,16 @@ serve(async (req) => {
         result = await response.json();
         break;
 
+      case 'get_appointments':
+        const startDate = data?.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const endDate = data?.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        response = await fetch(`${baseUrl}/calendars/events?locationId=${GHL_LOCATION_ID}&startTime=${startDate}&endTime=${endDate}`, {
+          method: 'GET',
+          headers,
+        });
+        result = await response.json();
+        break;
+
       case 'get_pipelines':
         response = await fetch(`${baseUrl}/opportunities/pipelines?locationId=${GHL_LOCATION_ID}`, {
           method: 'GET',
@@ -71,6 +81,16 @@ serve(async (req) => {
         });
         const oppsData = await oppsRes.json();
 
+        // Fetch appointments
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        const thirtyDaysLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const appointmentsRes = await fetch(`${baseUrl}/calendars/events?locationId=${GHL_LOCATION_ID}&startTime=${thirtyDaysAgo}&endTime=${thirtyDaysLater}`, {
+          method: 'GET',
+          headers,
+        });
+        const appointmentsData = await appointmentsRes.json();
+
         // Calculate stats from opportunities
         const opportunities = oppsData.opportunities || [];
         const totalValue = opportunities.reduce((sum: number, opp: any) => sum + (opp.monetaryValue || 0), 0);
@@ -84,6 +104,7 @@ serve(async (req) => {
           conversionRate: conversionRate.toFixed(1),
           recentContacts: (contactsData.contacts || []).slice(0, 5),
           pipelineData: opportunities,
+          appointments: appointmentsData.events || [],
         };
         break;
 

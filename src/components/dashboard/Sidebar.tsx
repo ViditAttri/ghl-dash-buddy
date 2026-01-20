@@ -1,28 +1,13 @@
 import { 
   LayoutDashboard, 
   Users, 
-  MessageSquare, 
-  Calendar, 
-  BarChart3, 
-  Settings, 
   Zap,
-  Target,
-  Mail,
-  Phone
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Users, label: "Contacts", path: "/contacts" },
-  { icon: Target, label: "Pipelines", path: "#" },
-  { icon: MessageSquare, label: "Conversations", path: "#" },
-  { icon: Calendar, label: "Calendar", path: "#" },
-  { icon: Mail, label: "Email Marketing", path: "#" },
-  { icon: Phone, label: "Phone System", path: "#" },
-  { icon: Zap, label: "Automations", path: "#" },
-  { icon: BarChart3, label: "Reports", path: "#" },
-  { icon: Settings, label: "Settings", path: "#" },
 ];
 
 export const Sidebar = () => {
