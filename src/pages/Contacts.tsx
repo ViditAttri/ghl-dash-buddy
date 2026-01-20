@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from "react";
-import { Loader2, Mail, Phone, Calendar, FileText, ExternalLink, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState, useRef, useMemo } from "react";
+import { Loader2, Mail, Phone, Calendar, FileText, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Header } from "@/components/dashboard/Header";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +14,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+
+type AppointmentFilter = 'all' | 'booked' | 'no-appointment';
 
 interface GHLContact {
   id: string;
@@ -87,8 +96,20 @@ const Contacts = () => {
   const [loading, setLoading] = useState(true);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [appointmentFilter, setAppointmentFilter] = useState<AppointmentFilter>('all');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const filteredContacts = useMemo(() => {
+    if (appointmentFilter === 'all') return contacts;
+    
+    return contacts.filter((contact) => {
+      const hasAppointment = getAppointmentSource(contact).hasAppointment;
+      if (appointmentFilter === 'booked') return hasAppointment;
+      if (appointmentFilter === 'no-appointment') return !hasAppointment;
+      return true;
+    });
+  }, [contacts, appointmentFilter]);
 
   const checkScrollability = () => {
     const container = scrollContainerRef.current;
@@ -160,13 +181,28 @@ const Contacts = () => {
             <div>
               <h1 className="text-2xl font-bold text-foreground">All Contacts</h1>
               <p className="text-muted-foreground">
-                {contacts.length} contacts from GoHighLevel
+                {filteredContacts.length} of {contacts.length} contacts from GoHighLevel
               </p>
             </div>
-            <Button onClick={fetchAllContacts} disabled={loading} variant="outline">
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <Select value={appointmentFilter} onValueChange={(v) => setAppointmentFilter(v as AppointmentFilter)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by appointment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Contacts</SelectItem>
+                    <SelectItem value="booked">Has Appointment</SelectItem>
+                    <SelectItem value="no-appointment">No Appointment</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={fetchAllContacts} disabled={loading} variant="outline">
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
           </div>
 
           <div className="stat-card overflow-hidden relative">
@@ -175,9 +211,9 @@ const Contacts = () => {
                 <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
                 <span className="ml-3 text-muted-foreground">Loading all contacts...</span>
               </div>
-            ) : contacts.length === 0 ? (
+            ) : filteredContacts.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
-                No contacts found
+                {contacts.length === 0 ? 'No contacts found' : 'No contacts match the selected filter'}
               </div>
             ) : (
               <>
@@ -223,7 +259,7 @@ const Contacts = () => {
                       </TableRow>
                     </TableHeader>
                   <TableBody>
-                    {contacts.map((contact) => {
+                    {filteredContacts.map((contact) => {
                       const appointment = getAppointmentSource(contact);
                       const resumeUrl = getResumeUrl(contact);
                       
